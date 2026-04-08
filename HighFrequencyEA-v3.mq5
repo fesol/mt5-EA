@@ -1,7 +1,5 @@
 ﻿//+------------------------------------------------------------------+
-//|                        HFT_Scalper_EA.mq5                        |
 //|                  High Frequency Scalper  v4.1                    |
-//|  Fixes: log threshold arg, static array, velocity in debug log   |
 //+------------------------------------------------------------------+
 #property copyright   "HFT Scalper v4"
 #property version     "4.10"

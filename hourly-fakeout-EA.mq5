@@ -1,4 +1,5 @@
 ﻿//+------------------------------------------------------------------+
+// Expert Based in 'magic hours' reversal theory
 //+------------------------------------------------------------------+
 
 #include <Trade\Trade.mqh>
@@ -53,8 +54,8 @@ input double         InpTrailDistPct     = 30.0;   // Trail distance as % of TP 
 
 input group "══════ Session Filter ══════"
 input bool    InpUseTimeFilter   = true;    // Enable session time filter
-input int     InpStartHour       = 8;       // Session start (server time, inclusive)
-input int     InpEndHour         = 20;      // Session end   (server time, exclusive)
+input int     InpStartHour       = 12;       // Session start (server time, inclusive)
+input int     InpEndHour         = 15;      // Session end   (server time, exclusive)
 
 input group "══════ Risk Management ══════"
 input bool    InpUsePercentRisk  = true;    // true = % of balance | false = fixed lot
