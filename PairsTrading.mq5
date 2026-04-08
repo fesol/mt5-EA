@@ -1,9 +1,6 @@
 //+------------------------------------------------------------------+
-//|                      Copyright 2024, Shtenco (Evgeniy Koshtenko) |
-//|                          https://www.mql5.com/en/users/koshtenko |
 //+------------------------------------------------------------------+
-#property copyright "https://www.mql5.com/en/users/koshtenko"
-#property link      "https://www.mql5.com/en/users/koshtenko"
+
 #property version   "2.00"
 #property strict
 
