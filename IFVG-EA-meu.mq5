@@ -7,7 +7,6 @@
 //|  Buffer 0 → Bull signal → FVG box BOTTOM price                   |
 //|  Buffer 1 → Bear signal → FVG box TOP    price                   |
 //+------------------------------------------------------------------+
-#property copyright "Based on LuxAlgo IFVG — CC BY-NC-SA 4.0"
 #property version   "4.00"
 
 #include <Trade\Trade.mqh>
