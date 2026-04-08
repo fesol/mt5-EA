@@ -1,14 +1,5 @@
 ﻿//+------------------------------------------------------------------+
-//|                                           BreakReturn_EA.mq5     |
-//|                    Break & Return Strategy  v1.2                  |
-//|  + ATR threshold in hourly log                                    |
-//|  + Previous candle H/L/Mid horizontal lines on chart             |
-//|  + AMA slope trend filter (higher TF, relative %)                |
-//|  + Trailing stop based on TP distance (continuous or step)       |
 //+------------------------------------------------------------------+
-#property copyright "BreakReturn EA"
-#property version   "1.20"
-#property description "Break & Return Hourly Strategy - Symbol-Agnostic"
 
 #include <Trade\Trade.mqh>
 
