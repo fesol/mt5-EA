@@ -1,5 +1,5 @@
 ﻿//+------------------------------------------------------------------+
-// Expert Based in 'magic hours' reversal theory
+// Expert Based in 'magic hours' reversal theory from TradingStats.net
 //+------------------------------------------------------------------+
 
 #include <Trade\Trade.mqh>
