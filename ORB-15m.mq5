@@ -4,20 +4,20 @@
 CTrade trade;
 
 // --- Entry time ---
-input int startHour        = 18;
+input int startHour        = 16;
 input int startMinute      = 35;
 
 // --- Closing window ---
-input int closeStartHour   = 22;
-input int closeStartMinute = 0;
-input int closeEndHour     = 23;
-input int closeEndMinute   = 45;
+input int closeStartHour   = 21;
+input int closeStartMinute = 50;
+input int closeEndHour     = 22;
+input int closeEndMinute   = 55;
 
 // --- RSI close filter (independent timeframe) ---
-input ENUM_TIMEFRAMES rsiTimeframe = PERIOD_H1;
+input ENUM_TIMEFRAMES rsiTimeframe = PERIOD_M15;
 input int             rsiPeriod    = 14;
-input double          rsiBuyClose  = 70.0;
-input double          rsiSellClose = 30.0;
+input double          rsiBuyClose  = 90.0;
+input double          rsiSellClose = 10.0;
 
 // --- Profit target ---
 input double profitTargetPct = 1.0;
@@ -35,9 +35,9 @@ input bool allowFriday    = true;
 
 // --- Strategy ---
 input double risk      = 2.0;
-input double slp       = 0.008;
-input int    MaPeriods = 300;
-input int    Magic     = 0;
+input double slp       = 0.004;
+input int    MaPeriods = 250;
+input int    Magic     = 998877;
 
 int    barsTotal = 0;
 int    handleMa;
