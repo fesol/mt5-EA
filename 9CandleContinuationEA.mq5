@@ -1,5 +1,5 @@
 ﻿//+------------------------------------------------------------------+
-//|         9AM New York First-Hour Continuation Strategy based on 
+//|         9AM New York First-Hour Continuation Strategy based on   |
 //|    https://tradingstats.net/first-hour-continuation-research     |
 //|                                                                  |
 //|  Logic:                                                          |
@@ -22,6 +22,9 @@
 //====================================================================
 //  INPUT PARAMETERS
 //====================================================================
+
+input group "══ EA Settings ════════════════════════════"
+input long   InpMagicNumber      = 9001;  // EA Magic Number
 
 input group "══ Entry ══════════════════════════════════"
 input int    InpServerEntryHour  = 17;    // Server hour when 9AM NY candle closes (10AM NY)
@@ -61,17 +64,16 @@ input double InpRSIShortClose    = 10.0;        // RSI ≤ this → close shorts
 //====================================================================
 //  CONSTANTS & GLOBALS
 //====================================================================
-const ulong  MAGIC = 9001;    // EA magic number
-
 CTrade        trade;
 CPositionInfo posInfo;
 
 int      g_atrHandle    = INVALID_HANDLE;
 int      g_rsiHandle    = INVALID_HANDLE;
+ulong    g_magic        = 0;        // Stores the user-defined magic number
 
-datetime g_today        = 0;       // Current trading day (midnight)
-bool     g_tradedToday  = false;   // One trade per day flag
-bool     g_entryChecked = false;   // Entry logic run today flag
+datetime g_today        = 0;        // Current trading day (midnight)
+bool     g_tradedToday  = false;    // One trade per day flag
+bool     g_entryChecked = false;    // Entry logic run today flag
 
 double   g_nineAMHigh   = 0.0;
 double   g_nineAMLow    = 0.0;
@@ -81,6 +83,9 @@ double   g_nineAMLow    = 0.0;
 //====================================================================
 int OnInit()
 {
+   // Store magic number from input
+   g_magic = (ulong)InpMagicNumber;
+   
    // Daily ATR for size filter and SL
    g_atrHandle = iATR(_Symbol, PERIOD_D1, InpATRPeriod);
    // RSI on user-defined timeframe for exit
@@ -92,12 +97,12 @@ int OnInit()
       return INIT_FAILED;
    }
 
-   trade.SetExpertMagicNumber(MAGIC);
+   trade.SetExpertMagicNumber(g_magic);
    trade.SetDeviationInPoints(20);
    trade.SetTypeFilling(ORDER_FILLING_IOC);
 
-   PrintFormat("NineAM Conviction EA initialised | Symbol=%s | EntryHour(server)=%d | Conviction=%.2f | SLMode=%d",
-               _Symbol, InpServerEntryHour, InpConviction, (int)InpSLMode);
+   PrintFormat("NineAM Conviction EA initialised | Symbol=%s | Magic=%llu | EntryHour(server)=%d | Conviction=%.2f | SLMode=%d",
+               _Symbol, g_magic, InpServerEntryHour, InpConviction, (int)InpSLMode);
    return INIT_SUCCEEDED;
 }
 
@@ -220,7 +225,7 @@ void CheckEntry()
    //── Direction ────────────────────────────────────────────────────
    bool isLong = (c > o);
 
-   // *** NEW: Apply direction filter ***
+   // Apply direction filter
    if(isLong && !InpAllowLong)
    {
       Print("NineAM EA: Long signal generated but InpAllowLong = false. Trade skipped.");
@@ -305,7 +310,7 @@ void CheckRSIExit()
    {
       if(!posInfo.SelectByIndex(i))           continue;
       if(posInfo.Symbol() != _Symbol)         continue;
-      if(posInfo.Magic()  != MAGIC)           continue;
+      if(posInfo.Magic()  != g_magic)         continue;
 
       bool closeLong  = (posInfo.PositionType() == POSITION_TYPE_BUY  && rsi >= InpRSILongClose);
       bool closeShort = (posInfo.PositionType() == POSITION_TYPE_SELL && rsi <= InpRSIShortClose);
@@ -328,7 +333,7 @@ void CloseAll(string reason)
    {
       if(!posInfo.SelectByIndex(i))   continue;
       if(posInfo.Symbol() != _Symbol) continue;
-      if(posInfo.Magic()  != MAGIC)   continue;
+      if(posInfo.Magic()  != g_magic) continue;
 
       trade.PositionClose(posInfo.Ticket(), 20);
       PrintFormat("NineAM EA: %s | Ticket=%llu", reason, posInfo.Ticket());
@@ -344,7 +349,7 @@ bool HasPosition()
    {
       if(!posInfo.SelectByIndex(i))   continue;
       if(posInfo.Symbol() != _Symbol) continue;
-      if(posInfo.Magic()  == MAGIC)   return true;
+      if(posInfo.Magic()  == g_magic) return true;
    }
    return false;
 }
@@ -375,4 +380,3 @@ double CalcLots(double slDist)
 
    return NormalizeDouble(lots, 2);
 }
-//+------------------------------------------------------------------+
