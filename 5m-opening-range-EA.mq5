@@ -25,7 +25,7 @@ input double TPMultiplier = 2.0;       // TP as multiplier of SL distance
 input TrailingMode Trailing = None;    // Trailing mode: None, CandleTrail, PercentTrail
 input double StartTrailPercentTP = 10; // Start trailing after % of TP distance
 input double TrailDistPercentTP = 5; // Trailing distance % of TP distance
-input int CancelAfterCandles = 5;      // Cancel pending after this many candles if not filled
+input int CancelAfterCandles = 3;      // Cancel pending after this many candles if not filled
 input int MagicNumber = 12345;         // Magic number for orders
 input int Slippage = 3;                // Slippage in points
 
