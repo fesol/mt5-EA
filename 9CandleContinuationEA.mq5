@@ -11,9 +11,13 @@
 //|   5. During exit window: close on RSI extreme                    |
 //|   6. Force-close at end of exit window                          |
 //|   7. Close if floating profit ≥ % of account balance             |
+//|                                                                  |
+//|  Dynamic Lot Sizing:                                             |
+//|   - Risk % scales with conviction above threshold                |
+//|   - Separate multiplier for Long / Short bias                    |
 //+------------------------------------------------------------------+
 #property copyright "9AM NY Conviction EA"
-#property version   "1.02"
+#property version   "1.04"   // profit target exit added, TP order removed
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -47,7 +51,14 @@ input ENUM_SL_MODE InpSLMode     = SL_ATR;  // Stop loss type
 input double InpSLATRMult        = 1.5;     // ATR multiplier for SL (if SL_ATR)
 
 input group "══ Risk ════════════════════════════════════"
-input double InpRiskPct          = 1.0;   // Risk % of account balance per trade
+input double InpRiskPct          = 1.0;   // Base risk % of account balance per trade
+
+input group "══ Dynamic Risk ═══════════════════════════"
+input bool   InpUseDynamicRisk   = true;     // Enable conviction-based risk scaling
+input double InpConvictionScale  = 5.0;      // Risk multiplier per 0.1 extra conviction
+input double InpMaxRiskMult      = 2.0;      // Maximum risk multiplier
+input double InpLongBiasMult     = 1.2;      // Risk multiplier for LONG trades (>1 = overweight)
+input double InpShortBiasMult    = 0.8;      // Risk multiplier for SHORT trades (<1 = underweight)
 
 input group "══ Exit Window ═════════════════════════════"
 input int    InpExitStartHour    = 21;    // Exit window: start hour   (server time)
@@ -160,7 +171,7 @@ void OnTick()
       }
    }
 
-   //── Exit window ──────────────────────────────────────────────────
+   //── Exit handling ──────────────────────────────────────────────────
    if(HasPosition())
    {
       // 1) Profit target exit (if enabled)
@@ -275,8 +286,30 @@ void CheckEntry()
 
    if(slDist < _Point) slDist = dailyATR;   // safety floor
 
+   //─────────────────────────────────────────────────────────────────
+   //  DYNAMIC RISK CALCULATION
+   //─────────────────────────────────────────────────────────────────
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+   double effectiveRiskPct = InpRiskPct;
+
+   if(InpUseDynamicRisk)
+   {
+      double extra = conviction - InpConviction;
+      if(extra > 0.0)
+      {
+         double mult = 1.0 + extra * InpConvictionScale;
+         mult = MathMin(mult, InpMaxRiskMult);
+         effectiveRiskPct = InpRiskPct * mult;
+      }
+   }
+
+   // Apply directional bias multiplier
+   effectiveRiskPct *= (isLong ? InpLongBiasMult : InpShortBiasMult);
+
+   double riskAmt = balance * effectiveRiskPct / 100.0;
+
    //── Lot calculation ──────────────────────────────────────────────
-   double lots = CalcLots(slDist);
+   double lots = CalcLots(riskAmt, slDist);
    if(lots <= 0.0)
    {
       Print("NineAM EA: Lot calculation returned 0 — aborting trade");
@@ -285,10 +318,11 @@ void CheckEntry()
 
    slPrice = (InpSLMode != SL_NONE) ? NormalizeDouble(slPrice, _Digits) : 0.0;
 
-   PrintFormat("NineAM EA | Dir=%s | O=%.5f H=%.5f L=%.5f C=%.5f | Conv=%.2f | ATR=%.5f | SL=%.5f | Lots=%.2f",
-               isLong ? "LONG" : "SHORT", o, h, l, c, conviction, dailyATR, slPrice, lots);
+   PrintFormat("NineAM EA | Dir=%s | O=%.5f H=%.5f L=%.5f C=%.5f | Conv=%.2f | ATR=%.5f | SL=%.5f | BaseRisk=%.2f%% | EffRisk=%.2f%% | Lots=%.2f",
+               isLong ? "LONG" : "SHORT", o, h, l, c, conviction, dailyATR, slPrice,
+               InpRiskPct, effectiveRiskPct, lots);
 
-   //── Send order ───────────────────────────────────────────────────
+   //── Send order (no TP price) ─────────────────────────────────────
    bool ok = isLong
              ? trade.Buy (lots, _Symbol, 0, slPrice, 0, "9AM Long")
              : trade.Sell(lots, _Symbol, 0, slPrice, 0, "9AM Short");
@@ -390,13 +424,10 @@ bool HasPosition()
 }
 
 //====================================================================
-//  LOT SIZE  (risk % of balance ÷ SL distance)
+//  LOT SIZE  (risk amount ÷ SL distance)
 //====================================================================
-double CalcLots(double slDist)
+double CalcLots(double riskAmount, double slDist)
 {
-   double balance  = AccountInfoDouble(ACCOUNT_BALANCE);
-   double riskAmt  = balance * InpRiskPct / 100.0;
-
    double tickSz   = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
    double tickVal  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    double lotStep  = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
@@ -409,7 +440,7 @@ double CalcLots(double slDist)
    double slValuePerLot = (slDist / tickSz) * tickVal;
    if(slValuePerLot <= 0) return minLot;
 
-   double lots = riskAmt / slValuePerLot;
+   double lots = riskAmount / slValuePerLot;
    lots = MathFloor(lots / lotStep) * lotStep;
    lots = MathMax(minLot, MathMin(maxLot, lots));
 
