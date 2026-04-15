@@ -1,19 +1,19 @@
-﻿//+------------------------------------------------------------------+
-//|         9AM New York First-Hour Continuation Strategy based on   |
-//|    https://tradingstats.net/first-hour-continuation-research     |
+//+------------------------------------------------------------------+
+//|         9AM New York First-Hour Continuation Strategy            |
 //|                                                                  |
 //|  Logic:                                                          |
-//|   1. At InpServerEntryHour (default 17:00 server = 10AM NY)      |
-//|      read the just-closed H1 candle (= 9AM NY candle).           |
-//|   2. Conviction = |Close-Open| / (High-Low)                      |
-//|   3. ATR size filter: candle range > InpATRCandleFilter × D1ATR  |
-//|   4. Green + conviction ≥ threshold → Long                       |
-//|      Red  + conviction ≥ threshold → Short                       |
+//|   1. At InpServerEntryHour (default 17:00 server = 10AM NY)     |
+//|      read the just-closed H1 candle (= 9AM NY candle).          |
+//|   2. Conviction = |Close-Open| / (High-Low)                     |
+//|   3. ATR size filter: candle range > InpATRCandleFilter × D1ATR |
+//|   4. Green + conviction ≥ threshold → Long                      |
+//|      Red  + conviction ≥ threshold → Short                      |
 //|   5. During exit window: close on RSI extreme                    |
-//|   6. Force-close at end of exit window                           |
+//|   6. Force-close at end of exit window                          |
+//|   7. Close if floating profit ≥ % of account balance             |
 //+------------------------------------------------------------------+
 #property copyright "9AM NY Conviction EA"
-#property version   "1.01"   // minor performance update
+#property version   "1.02"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -60,6 +60,10 @@ input ENUM_TIMEFRAMES InpRSITF   = PERIOD_H1;  // RSI timeframe
 input int    InpRSIPeriod        = 14;          // RSI period
 input double InpRSILongClose     = 90.0;        // RSI ≥ this → close longs
 input double InpRSIShortClose    = 10.0;        // RSI ≤ this → close shorts
+
+input group "══ Profit Target ════════════════════════"
+input bool   InpUseProfitTarget   = false;  // Enable profit target exit
+input double InpProfitTargetPct   = 1.0;    // Close when profit ≥ this % of account balance
 
 //====================================================================
 //  CONSTANTS & GLOBALS
@@ -159,14 +163,19 @@ void OnTick()
    //── Exit window ──────────────────────────────────────────────────
    if(HasPosition())
    {
+      // 1) Profit target exit (if enabled)
+      if(InpUseProfitTarget)
+         CheckProfitTargetExit();
+
       int nowMin   = dt.hour * 60 + dt.min;
       int winStart = InpExitStartHour * 60 + InpExitStartMin;
       int winEnd   = InpExitEndHour   * 60 + InpExitEndMin;
 
+      // 2) RSI exit (only during exit window)
       if(nowMin >= winStart && nowMin <= winEnd)
          CheckRSIExit();
 
-      // Force-close after window ends
+      // 3) Force-close after window ends
       if(nowMin > winEnd)
          CloseAll("EOD forced close");
    }
@@ -321,6 +330,32 @@ void CheckRSIExit()
                      rsi, closeLong ? "Long closed" : "Short closed");
          trade.PositionClose(posInfo.Ticket(), 20);
       }
+   }
+}
+
+//====================================================================
+//  PROFIT TARGET EXIT CHECK
+//====================================================================
+void CheckProfitTargetExit()
+{
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+   double targetProfit = balance * InpProfitTargetPct / 100.0;
+
+   double totalProfit = 0.0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(!posInfo.SelectByIndex(i))   continue;
+      if(posInfo.Symbol() != _Symbol) continue;
+      if(posInfo.Magic()  != g_magic) continue;
+
+      totalProfit += posInfo.Profit();
+   }
+
+   if(totalProfit >= targetProfit - _Point)   // small tolerance
+   {
+      PrintFormat("NineAM EA: Profit target reached | Profit=%.2f (%.2f%% of balance) | Closing all positions",
+                  totalProfit, totalProfit / balance * 100.0);
+      CloseAll("Profit target hit");
    }
 }
 
